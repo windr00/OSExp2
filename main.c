@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <stdlib.h>
 
 
 int tot = 0; /* 当前产品总数目 */
@@ -35,51 +36,52 @@ ThreadInfo Thread_Info[MAX_THREAD_NUM];
 void threads_init(int pnum, int cnum) {
     for (int i = 0; i < pnum; i++) {
         Thread_Info[i].entity = 'P';
-        Thread_Info[i].sleeptime = 1000;
+        Thread_Info[i].sleeptime = (rand() % 3);
     }
 
     for (int j = pnum; j < pnum + cnum; j++) {
         Thread_Info[j].entity = 'C';
-        Thread_Info[j].sleeptime = 2000;
+        Thread_Info[j].sleeptime = rand() % 4;
     }
 }
 
 void *consume(void *s) {
-    int thread_id = pthread_self();
     tot--;
-    printf("comsumer id : %d, out index: %d\n", thread_id, out);
+    printf("out index: %d\n", out);
     int prod = buffer[out];
     printf("consumed product id : %d\n", prod);
     out++;
     out %= 5;
 
-    printf("product count : %d\n", tot);
+    printf("product count : %d\n\n", tot);
 }
 
 
 void *Consumer(void *p) {
     unsigned sleep_time = (unsigned) ((ThreadInfo *) p)->sleeptime;
+    int thread_num = ((ThreadInfo *) p)->ID;
     while (1) {
-        sleep(sleep_time);
-        sem_wait(&FullSemaphore);
-        sem_wait(&CMutex);
-        consume(NULL);
-        sem_post(&CMutex);
-        sem_post(&FullSemaphore);
-        sem_post(&EmptySemaphore);
+        if (tot < 5) {
+            sleep(sleep_time);
+            sem_wait(&FullSemaphore);
+            sem_wait(&CMutex);
+            printf("CONSUMER %d consuming product\n", thread_num);
+            consume(NULL);
+            sem_post(&CMutex);
+            sem_post(&EmptySemaphore);
+        }
     }
 }
 
 
 void *produce(void *s) /* 生产者执行的函数，将产品放入缓冲区 */
 {
-    int thread_id = pthread_self();
     tot++;
-    printf("producer: %d, product num: %d\n", thread_id, *((int *) s));
+    printf("product num: %d\n", *((int *) s));
     buffer[in] = *(int *) s;
     in++;
     in = in % 5;
-    printf("total product count: %d\n", tot);
+    printf("total product count: %d\n\n", tot);
 //    获取线程标示、产品编号；
 //    当前产品总数加1；
 //    打印生产者标示、产品ID;
@@ -92,14 +94,14 @@ void *Product(void *p) /* 生产者线程 */
 {
     int product_num = 0;
     unsigned sleep_time = (unsigned) (((ThreadInfo *) p)->sleeptime);
-
+    int thread_num = ((ThreadInfo *) p)->ID;
     while (1) {
         sleep(sleep_time);
         sem_wait(&EmptySemaphore);
         sem_wait(&PMutex);
+        printf("PRODUCER %d producing product\n", thread_num);
         produce(&product_num);
         sem_post(&PMutex);
-        sem_post(&EmptySemaphore);
         sem_post(&FullSemaphore);
         product_num++;
     }
@@ -111,23 +113,27 @@ void *Product(void *p) /* 生产者线程 */
 //    满缓冲区信号量操作；
 }
 
-
+void *status;
 
 int main(int argc, char *argv[]) {
-
-    threads_init(2, 4); /* 初始化各个线程数据，线程类型、标示等 */
+    int pnum = 2, cnum = 20;
+    threads_init(pnum, cnum); /* 初始化各个线程数据，线程类型、标示等 */
 
     sem_init(&FullSemaphore, 0, 0);
     sem_init(&EmptySemaphore, 0, BUFFER_LEN);
-    for (int i = 0; i < 2; i++) {
-        Thread_Info[i].ID = pthread_create(&Thread[i], NULL, Product, &Thread_Info[i]);
+    sem_init(&PMutex, 0, 1);
+    sem_init(&CMutex, 0, 1);
+    for (int i = 0; i < pnum; i++) {
+        pthread_create(&Thread[i], NULL, Product, &Thread_Info[i]);
+        Thread_Info[i].ID = i;
     }
-    for (int i = 2; i < 6; i++) {
-        Thread_Info[i].ID = pthread_create(&Thread[i], NULL, Consumer, &Thread_Info[i]);
+    for (int i = pnum; i < pnum + cnum; i++) {
+        Thread_Info[i].ID = i;
+        pthread_create(&Thread[i], NULL, Consumer, &Thread_Info[i]);
     }
 
     for (int i = 0; i < 6; i++) {
-        pthread_join((pthread_t) Thread_Info[i].ID, NULL);
+        pthread_join(Thread[i], &status);
     }
 
 

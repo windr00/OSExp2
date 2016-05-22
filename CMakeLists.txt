@@ -5,4 +5,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set(SOURCE_FILES main.c)
 add_executable(OSExp2 ${SOURCE_FILES})
-target_link_libraries(OSExp2 libpthread)
+target_link_libraries(OSExp2 pthread)
