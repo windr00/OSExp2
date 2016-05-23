@@ -118,7 +118,7 @@ void *status;
 int main(int argc, char *argv[]) {
     int pnum = 2, cnum = 20;
     threads_init(pnum, cnum); /* 初始化各个线程数据，线程类型、标示等 */
-
+    printf("this project is done by 冉惟之, stu. id : 2013060105023\n");
     sem_init(&FullSemaphore, 0, 0);
     sem_init(&EmptySemaphore, 0, BUFFER_LEN);
     sem_init(&PMutex, 0, 1);
