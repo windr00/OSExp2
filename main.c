@@ -61,7 +61,7 @@ void *Consumer(void *p) {
     unsigned sleep_time = (unsigned) ((ThreadInfo *) p)->sleeptime;
     int thread_num = ((ThreadInfo *) p)->ID;
     while (1) {
-        if (tot < 5) {
+
             sleep(sleep_time);
             sem_wait(&FullSemaphore);
             sem_wait(&CMutex);
@@ -69,7 +69,6 @@ void *Consumer(void *p) {
             consume(NULL);
             sem_post(&CMutex);
             sem_post(&EmptySemaphore);
-        }
     }
 }
 
@@ -80,7 +79,7 @@ void *produce(void *s) /* 生产者执行的函数，将产品放入缓冲区 */
     printf("product num: %d\n", *((int *) s));
     buffer[in] = *(int *) s;
     in++;
-    in = in % 5;
+    in = in % BUFFER_LEN;
     printf("total product count: %d\n\n", tot);
 //    获取线程标示、产品编号；
 //    当前产品总数加1；
@@ -96,14 +95,16 @@ void *Product(void *p) /* 生产者线程 */
     unsigned sleep_time = (unsigned) (((ThreadInfo *) p)->sleeptime);
     int thread_num = ((ThreadInfo *) p)->ID;
     while (1) {
-        sleep(sleep_time);
-        sem_wait(&EmptySemaphore);
-        sem_wait(&PMutex);
-        printf("PRODUCER %d producing product\n", thread_num);
-        produce(&product_num);
-        sem_post(&PMutex);
-        sem_post(&FullSemaphore);
-        product_num++;
+        if (tot < 5) {
+            sleep(sleep_time);
+            sem_wait(&EmptySemaphore);
+            sem_wait(&PMutex);
+            printf("PRODUCER %d producing product\n", thread_num);
+            produce(&product_num);
+            sem_post(&PMutex);
+            sem_post(&FullSemaphore);
+            product_num++;
+        }
     }
 //    获取线程的休眠时间并休眠；
 //    空闲缓冲区信号量操作；
